@@ -9,38 +9,43 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+    
+    # 【修复 1】设置默认工作目录
+    # 这样该 Job 下的所有 run 步骤都会自动在 'android' 目录下执行
+    defaults:
+      run:
+        working-directory: ./android
+
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
-      
-    - name: Change Working Directory
-      run: cd android
-      
+
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
+        # 【修复 2】保留这里的缓存配置，删除下面手动的 cache 步骤
         cache: gradle
-        
+
+    # 注意：ubuntu-latest 通常已预装 Android SDK，
+    # 除非你需要特定的旧版本，否则这个步骤往往是可选的。
+    # 这里保留它作为保险。
     - name: Setup Android SDK
       uses: android-actions/setup-android@v1
       with:
         api-level: 34
         build-tools: 34.0.0
-        
+
     - name: Grant Execute Permission for Gradlew
       run: chmod +x gradlew
-      
-    - name: Gradle Caching
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
-        
-    - name: Build Release APK
-      run: ./gradlew assembleRelease
 
+    # 【修复 3】建议改为 assembleDebug
+    # 除非你已经配置了签名文件，否则 Release 构建可能会失败。
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
+      
+    # 如果你确实需要构建 Release 包，请确保你的 build.gradle 能处理无签名的情况，
+    # 或者配置了相应的 Secrets。
+    # - name: Build Release APK
+    #   run: ./gradlew assembleRelease
