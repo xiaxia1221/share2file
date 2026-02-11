@@ -10,7 +10,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    # 设置工作目录，解决 cd 无效的问题
+    # 【关键修复 1】设置默认工作目录
+    # 这解决了 "No such file or directory" 问题。
+    # 所有 run 步骤都会自动在 ./android 目录下执行。
     defaults:
       run:
         working-directory: ./android
@@ -24,14 +26,27 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+        # 这会自动处理 Gradle 缓存，不需要额外的 cache 步骤
         cache: gradle
 
-    # 【已删除】Setup Android SDK 步骤
-    # ubuntu-latest 已经自带 Android SDK，
-    # Gradle 会自动根据你的 build.gradle 配置下载所需的 Build Tools。
+    # 【关键修复 2】移除了 Setup Android SDK 步骤
+    # ubuntu-latest 环境已内置 Android SDK，直接用即可，
+    # 避免了之前那个 Action 不接受参数报错的问题。
 
-    - name: Grant Execute Permission for Gradlew
-      run: chmod +x gradlew
+    - name: Fix Gradlew Permissions and Line Endings
+      run: |
+        # 【关键修复 3】修复 Windows 换行符导致的 "required file not found" 错误
+        sed -i 's/\r$//' gradlew
+        # 赋予执行权限
+        chmod +x gradlew
 
     - name: Build Debug APK
+      # 使用 assembleDebug 避免 Release 签名报错
       run: ./gradlew assembleDebug
+      
+    # 可选：如果你想把打好的包上传到 GitHub Actions 的 Artifacts 里供下载
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: android/app/build/outputs/apk/debug/app-debug.apk
